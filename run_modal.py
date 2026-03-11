@@ -1,53 +1,62 @@
-"""Run train.py on a single Modal GPU."""
+"""Run protein LM training on Modal GPU.
+
+For dry run (single H100):
+    modal run run_modal.py
+
+For production speedrun (8×H100), change gpu="H100" to gpu="H100:8"
+and update train.py to use DDP.
+"""
 
 import modal
 
-app = modal.App("autoresearch-template")
+app = modal.App("protein-lm-speedrun")
 
-# Shared data volume — pre-load once, all research orgs read from it
-data_volume = modal.Volume.from_name("autoresearch-data", create_if_missing=True)
+# Shared data volume — prepare once, reuse across runs
+data_volume = modal.Volume.from_name("protein-lm-data", create_if_missing=True)
 
 image = (
-    modal.Image.debian_slim(python_version="3.10")
+    modal.Image.debian_slim(python_version="3.11")
     .pip_install("torch", extra_index_url="https://download.pytorch.org/whl/cu128")
-    .pip_install("pyarrow", "requests", "rustbpe", "tiktoken", "numpy")
-    .add_local_file("prepare.py", "/root/autoresearch/prepare.py", copy=True)
-    .add_local_file("train.py", "/root/autoresearch/train.py", copy=True)
+    .pip_install("numpy")
+    .add_local_file("prepare.py", "/root/speedrun/prepare.py", copy=True)
+    .add_local_file("train.py",   "/root/speedrun/train.py",   copy=True)
 )
 
 
 @app.function(
     image=image,
-    gpu="H100",
+    gpu="H100",        # change to "H100:8" for full speedrun
     volumes={"/data": data_volume},
-    timeout=60 * 15,
+    timeout=60 * 20,   # 20 min total (5 min training + overhead)
 )
 def train():
-    import subprocess
     import os
+    import subprocess
 
-    os.chdir("/root/autoresearch")
-    cache_dir = os.path.expanduser("~/.cache/autoresearch")
+    os.chdir("/root/speedrun")
+    cache_dir = os.path.expanduser("~/.cache/protein-lm-speedrun")
 
-    # Symlink from volume if data exists, otherwise prepare and cache
-    if os.path.exists("/data/data") and os.path.exists("/data/tokenizer"):
+    # Use cached data from volume if available, otherwise prepare fresh
+    if os.path.exists("/data/data") and os.listdir("/data/data"):
         print("Using cached data from volume.")
         os.makedirs(cache_dir, exist_ok=True)
-        os.symlink("/data/data", os.path.join(cache_dir, "data"))
-        os.symlink("/data/tokenizer", os.path.join(cache_dir, "tokenizer"))
+        data_link = os.path.join(cache_dir, "data")
+        if not os.path.exists(data_link):
+            os.symlink("/data/data", data_link)
     else:
         print("=== Running prepare.py (first time) ===")
         result = subprocess.run(
-            ["python", "prepare.py", "--num-shards", "2"],
+            ["python", "prepare.py", "--num-train", "100000", "--num-val", "5000"],
             capture_output=True, text=True,
         )
         print(result.stdout)
         if result.returncode != 0:
             print("STDERR:", result.stderr)
             raise RuntimeError("prepare.py failed")
-        # Cache to volume
-        subprocess.run(["cp", "-r", os.path.join(cache_dir, "data"), "/data/data"])
-        subprocess.run(["cp", "-r", os.path.join(cache_dir, "tokenizer"), "/data/tokenizer"])
+
+        # Cache prepared data to volume for future runs
+        os.makedirs("/data/data", exist_ok=True)
+        subprocess.run(["cp", "-r", os.path.join(cache_dir, "data"), "/data/"])
         data_volume.commit()
         print("Data cached to volume.")
 
@@ -55,13 +64,13 @@ def train():
     result = subprocess.run(
         ["python", "train.py"],
         capture_output=True, text=True,
-        timeout=600,
+        timeout=900,
     )
     print(result.stdout)
     if result.stderr:
-        print("STDERR:", result.stderr[-2000:])
+        print("STDERR:", result.stderr[-3000:])
     if result.returncode != 0:
-        raise RuntimeError(f"train.py failed with return code {result.returncode}")
+        raise RuntimeError(f"train.py failed (exit code {result.returncode})")
 
     return result.stdout
 
