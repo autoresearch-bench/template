@@ -1,11 +1,10 @@
 """
 AlphaZero Chess — Configuration & Compute Budget
 
-Resource management is expressed in GPU-seconds. One "compute unit" = 1 second
-of GPU time on the reference device (A100-80GB). All budgets scale linearly:
-if you have a faster GPU, you finish sooner; slower GPU, takes longer.
+Resource management is expressed in GPU-seconds on H100-80GB as the reference
+device (~1979 TFLOPS FP8, ~989 TFLOPS FP16). All budgets scale linearly.
 
-Default budget: 3600 GPU-seconds (1 hour A100 equivalent) per training iteration.
+Default budget: 600 GPU-seconds (10 minutes on one H100) total.
 """
 
 from dataclasses import dataclass, field
@@ -16,13 +15,13 @@ class ComputeBudget:
     """Controls how much compute to spend on each phase."""
 
     # Total GPU-seconds budget per training iteration
-    total_gpu_seconds: float = 3600.0
+    total_gpu_seconds: float = 600.0  # 10 minutes on H100
 
     # Fraction of budget allocated to self-play vs training
     self_play_fraction: float = 0.75  # 75% self-play, 25% training
 
-    # Maximum wall-clock time (seconds) as a hard stop, regardless of GPU speed
-    max_wall_clock: float = 7200.0  # 2 hours
+    # Maximum wall-clock time (seconds) as a hard stop
+    max_wall_clock: float = 900.0  # 15 minutes
 
     @property
     def self_play_gpu_seconds(self) -> float:
@@ -46,7 +45,7 @@ class ModelConfig:
 @dataclass
 class MCTSConfig:
     """Monte Carlo Tree Search parameters."""
-    num_simulations: int = 400
+    num_simulations: int = 200
     c_puct: float = 1.5        # exploration constant
     dirichlet_alpha: float = 0.3
     dirichlet_epsilon: float = 0.25  # root noise mixing weight
@@ -60,13 +59,13 @@ class TrainConfig:
     learning_rate: float = 0.01
     momentum: float = 0.9
     weight_decay: float = 1e-4
-    lr_milestones: list = field(default_factory=lambda: [100, 200, 300])
+    lr_milestones: list = field(default_factory=lambda: [10, 20, 30])
     lr_gamma: float = 0.1
-    replay_buffer_size: int = 200_000
-    min_replay_size: int = 10_000   # minimum samples before training starts
-    checkpoint_interval: int = 100   # save every N training steps
-    num_iterations: int = 100        # number of self-play → train cycles
-    games_per_iteration: int = 100
+    replay_buffer_size: int = 50_000
+    min_replay_size: int = 2_000    # minimum samples before training starts
+    checkpoint_interval: int = 10    # save every N iterations
+    num_iterations: int = 50         # number of self-play → train cycles
+    games_per_iteration: int = 25
 
 
 @dataclass
