@@ -86,8 +86,10 @@ N_EMBD = 512
 N_HEAD = 8
 N_LAYER = 6
 BATCH_SIZE = 64
-LR = 3e-4
+LR = 5e-3
+MIN_LR = 5e-4
 WARMUP_STEPS = 100
+GRAD_CLIP = 1.0
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -107,7 +109,7 @@ model = GPT(vocab_size, n_embd=N_EMBD, n_head=N_HEAD, n_layer=N_LAYER).to(device
 num_params = sum(p.numel() for p in model.parameters())
 print(f"Parameters: {num_params / 1e6:.1f}M")
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
+optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=0.1, betas=(0.9, 0.95))
 train_loader = make_dataloader(tokenizer, BATCH_SIZE, MAX_SEQ_LEN, "train")
 
 # ---------------------------------------------------------------------------
@@ -125,14 +127,15 @@ while True:
         loss = model(x, y)
     optimizer.zero_grad()
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
     optimizer.step()
 
-    # LR schedule: linear warmup then cosine decay
+    # LR schedule: linear warmup then cosine decay to MIN_LR floor
     progress = min(total_training_time / TIME_BUDGET, 1.0)
     if step < WARMUP_STEPS:
         lr = LR * (step + 1) / WARMUP_STEPS
     else:
-        lr = LR * 0.5 * (1 + math.cos(math.pi * progress))
+        lr = MIN_LR + 0.5 * (LR - MIN_LR) * (1 + math.cos(math.pi * progress))
     for g in optimizer.param_groups:
         g['lr'] = lr
 
