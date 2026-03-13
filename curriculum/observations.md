@@ -2,30 +2,18 @@
 
 ## Phase 1: Training Dynamics
 
+### Baseline Analysis
+- Model: GPT with 512 embd, 8 heads, 6 layers (~28M params)
+- Default config: LR=3e-4, AdamW (default wd=0.01), batch_size=64, warmup=100
+- Cosine decay to 0 (no min_lr floor), no gradient clipping, no torch.compile
+- Training budget: 300s on H100 with bfloat16 autocast
+- Context length: 2048, Vocab size: 8192
+- LR schedule note: warmup is step-based but decay is time-based (uses total_training_time/TIME_BUDGET)
+
 ### Experiment Results
-| # | Config | val_bpb | vs Baseline |
-|---|--------|---------|-------------|
-| 1 | Baseline (LR=3e-4, no clip, default betas) | 1.7998 | -- |
-| 2 | LR=3e-3, clip=1.0, wd=0.1, betas=(0.9,0.95), min_lr=3e-4 | 1.2710 | -29.4% |
+| # | Description | Key Changes | val_bpb | vs Best |
+|---|-------------|-------------|---------|---------|
+| *(awaiting results)* |||||
 
 ### Key Findings
-1. **LR was drastically too low**: Default LR=3e-4 → 1.7998. LR=3e-3 (10x) → 1.2710.
-2. **Gradient clipping essential**: clip=1.0 prevents divergence at high LR.
-3. **Weight decay 0.1**: Standard for transformer pretraining, helps regularization.
-4. **Optimizer betas (0.9, 0.95)**: Standard for LLM pretraining, less momentum on second moment.
-5. **Min LR floor**: Cosine schedule with min_lr=3e-4 (10% of peak) prevents LR going to 0.
-
-### Not Explored (budget exhausted)
-- torch.compile (expected ~20% speedup → more training steps)
-- LR=5e-3 or higher
-- Batch size variations (32, 128)
-- These should be explored in Phase 3 (Synthesis)
-
-### Phase 1 Best Config (locked for Phase 2)
-- LR=3e-3, grad_clip=1.0, weight_decay=0.1
-- betas=(0.9, 0.95), min_lr=3e-4
-- warmup_steps=100, batch_size=64
-- val_bpb = 1.2710
-
-## Phase 2: Architecture
-*(Results will be added as experiments complete)*
+*(will be updated as results arrive)*

@@ -36,41 +36,40 @@
 <body>
 
 <h1>ML Research Dashboard</h1>
-<p class="subtitle">Goal: Minimize val_bpb | Budget: 4.0 GPU-hours | Model: GPT 28.3M params</p>
+<p class="subtitle">Goal: Minimize val_bpb | Budget: 4.0 GPU-hours | Model: GPT ~28M params</p>
 
 <div class="grid">
   <div class="card">
     <div class="label">Best val_bpb</div>
-    <div class="value best">1.2710</div>
+    <div class="value">--</div>
   </div>
   <div class="card">
     <div class="label">Current Phase</div>
-    <div class="value">1 &rarr; 2</div>
+    <div class="value">1</div>
   </div>
   <div class="card">
     <div class="label">Experiments Run</div>
-    <div class="value">9</div>
+    <div class="value">0</div>
   </div>
   <div class="card">
     <div class="label">Budget Used</div>
-    <div class="value">0.75h</div>
+    <div class="value">0.0h</div>
   </div>
 </div>
 
 <h2>Phases</h2>
-<div class="phase done">
-  <div class="phase-header">
-    <span class="phase-name">Phase 1: Training Dynamics</span>
-    <span class="badge done">DONE</span>
-  </div>
-  <p style="color: #8b949e; font-size: 13px; margin-top: 4px;">Best: LR=3e-3, clip=1.0, wd=0.1, betas=(0.9,0.95), min_lr=3e-4 &rarr; 1.2710</p>
-</div>
 <div class="phase active">
   <div class="phase-header">
-    <span class="phase-name">Phase 2: Architecture</span>
-    <span class="badge current">NEXT</span>
+    <span class="phase-name">Phase 1: Training Dynamics</span>
+    <span class="badge current">ACTIVE</span>
   </div>
-  <p style="color: #8b949e; font-size: 13px; margin-top: 4px;">Weight tying, SwiGLU, RMSNorm, RoPE, depth/width</p>
+  <p style="color: #8b949e; font-size: 13px; margin-top: 4px;">LR, optimizer, schedule, batch, clip, weight decay</p>
+</div>
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-name">Phase 2: Architecture</span>
+    <span class="badge pending">PENDING</span>
+  </div>
 </div>
 <div class="phase">
   <div class="phase-header">
@@ -90,13 +89,8 @@
   <thead>
     <tr><th>#</th><th>Description</th><th>Key Changes</th><th>val_bpb</th><th>vs Baseline</th></tr>
   </thead>
-  <tbody>
-    <tr>
-      <td>1</td><td>Baseline</td><td>LR=3e-4, no clip, default betas</td><td>1.7998</td><td>--</td>
-    </tr>
-    <tr class="best-row">
-      <td>2</td><td>High LR + stability</td><td>LR=3e-3, clip=1.0, wd=0.1, betas=(0.9,0.95), min_lr=3e-4</td><td>1.2710</td><td class="improved">-0.5288 (-29.4%)</td>
-    </tr>
+  <tbody id="phase1-results">
+    <tr><td colspan="5" style="color: #8b949e; text-align: center;">Awaiting results...</td></tr>
   </tbody>
 </table>
 
@@ -106,7 +100,7 @@
     <tr><th>#</th><th>Description</th><th>Key Changes</th><th>val_bpb</th><th>vs Phase 1 Best</th></tr>
   </thead>
   <tbody>
-    <tr><td colspan="5" style="color: #8b949e; text-align: center;">Awaiting results...</td></tr>
+    <tr><td colspan="5" style="color: #8b949e; text-align: center;">Not started</td></tr>
   </tbody>
 </table>
 

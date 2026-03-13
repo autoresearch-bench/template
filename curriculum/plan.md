@@ -1,32 +1,34 @@
 # Research Plan
 
-## Objective
-Minimize val_bpb on a 28.3M param GPT model trained for 300s on H100.
+## Overall Goal
+Minimize val_bpb on a ~28M-param GPT model trained for 300s on H100.
 
-## Phase 1: Training Dynamics (COMPLETE)
-**Best config**: LR=3e-3, grad_clip=1.0, wd=0.1, betas=(0.9, 0.95), min_lr=3e-4
-**Result**: val_bpb = 1.2710 (29.4% improvement over baseline 1.7998)
+## Phase 1: Training Dynamics (Current)
 
-## Phase 2: Architecture (NEXT)
-Lock Phase 1 best training config, explore architecture improvements:
+### Strategy
+The baseline LR=3e-4 is likely ~10-16x too low based on prior experience. We'll systematically optimize:
 
-### Priority Order
-1. **Weight tying** — share tok_emb and lm_head weights. Reduces params ~4M, acts as regularizer.
-2. **SwiGLU activation** — replace GELU MLP with SwiGLU (8/3 hidden ratio to match param count).
-3. **RMSNorm** — replace LayerNorm with RMSNorm (faster, works well in practice).
-4. **RoPE** — replace learned positional embeddings with rotary position embeddings.
-5. **torch.compile** — for throughput improvement (more steps in budget).
-6. **Depth/width** — try deeper/narrower (n_layer=8, n_embd=448) or (n_layer=10, n_embd=384).
-7. **Combined best** — all architecture improvements together.
+1. **Baseline** - Establish starting val_bpb with default config
+2. **Learning Rate** - Test higher LRs: 1e-3, 3e-3, 5e-3, 8e-3
+3. **Gradient Clipping** - Add grad_clip=1.0 (essential at high LR)
+4. **Weight Decay** - Test wd=0.1 (standard for transformers)
+5. **Optimizer Betas** - Try betas=(0.9, 0.95) (standard for pretraining)
+6. **torch.compile** - Enable for ~20% speedup = more steps in budget
+7. **Schedule** - Cosine with min_lr floor (10% of peak)
+8. **Batch Size** - Test larger batches if memory allows
 
-### Expected Impact (from prior experience)
-- SwiGLU + RMSNorm + RoPE + weight tying together reached ~1.167 previously.
+### Expected Progression
+- Baseline: ~1.80 bpb
+- Optimized LR alone: ~1.30-1.40 bpb
+- Full optimization (LR + clip + wd + betas + compile + min_lr): ~1.20-1.25 bpb
+
+## Phase 2: Architecture (Planned)
+- SwiGLU activation, RMSNorm, RoPE, weight tying
+- Depth/width trade-offs, FFN ratio adjustments
 
 ## Phase 3: Synthesis (Planned)
 - Combine best Phase 1 training + best Phase 2 architecture
 - Re-optimize LR for new architecture
-- Add torch.compile if not tested
-- Try LR=5e-3, batch size variations
 
 ## Phase 4: Advanced (Planned)
-- Muon optimizer, QK-layernorm, exotic techniques
+- Muon optimizer, QK-norm, exotic techniques
