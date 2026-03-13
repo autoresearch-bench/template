@@ -60,6 +60,7 @@ class GPT(nn.Module):
         self.blocks = nn.ModuleList([Block(n_embd, n_head) for _ in range(n_layer)])
         self.ln_f = nn.LayerNorm(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
+        self.lm_head.weight = self.tok_emb.weight
 
     def forward(self, idx, targets=None, reduction='mean'):
         B, T = idx.shape
